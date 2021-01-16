@@ -1,7 +1,7 @@
 <template>
 	<view class="zy-modal" :class="dshow?'show':''">
 		<view class="zy-dialog" style="background-color: transparent;">
-			<view class="padding-top text-white" :class="'zy-upgrade-topbg-'+maincolor">
+			<view class="padding-top text-white" :class="'zy-upgrade-topbg-'+theme">
 				<view>
 					<text class="zy-upgrade-title">
 						发现新版本
@@ -14,20 +14,20 @@
 					<text>{{update_tips}}</text>
 				</scroll-view>
 				<view class="zy-progress radius striped active" v-if="update_flag">
-					<view :class="'bg-'+maincolor" :style="'width: '+update_process+'%;'">
+					<view :class="'bg-'+theme" :style="'width: '+update_process+'%;'">
 						{{update_process}}
 					</view>
 				</view>
 			</view>
 			<view class="zy-bar bg-white justify-end">
 				<view class="action" v-if="!update_flag">
-					<button class="zy-btn" :class="'bg-'+maincolor" @click="upgrade_checked">确认升级</button>
-					<button class="zy-btn margin-left" :class="'line-'+maincolor"
+					<button class="zy-btn" :class="'bg-'+theme" @click="upgrade_checked">确认升级</button>
+					<button class="zy-btn margin-left" :class="'line-'+theme"
 					v-if="!forceupgrade"
 					 @click="upgrade_cancel">取消升级</button>
 				</view>
 				<view class="action text-center" v-if="update_flag&&!forceupgrade">
-					<button class="zy-btn" :class="'bg-'+maincolor" @click="upgrade_break">中断升级</button>
+					<button class="zy-btn" :class="'bg-'+theme" @click="upgrade_break">中断升级</button>
 				</view>
 			</view>
 		</view>
@@ -38,15 +38,7 @@
 	export default {
 		name: 'ZyUpgrade',
 		props: {
-			width: {
-				type: Number,
-				default: 500
-			},
-			height: {
-				type:Number,
-				default: 800
-			},
-			maincolor: {
+			theme: {	//主题，目前支持
 				type: String,
 				default: 'green'
 			},
@@ -61,6 +53,10 @@
 			oldversion: {	//如果是H5，为了方便测试，可以传入一个旧版本号进来。
 				type: String,
 				default: ''
+			},
+			oldcode: { //如果是H5，为了方便测试，可以传一个旧版本的code进来。
+				type: Number,
+				default: 0
 			},
 			appstoreflag: {	//是否启用appstore升级，如果启用，由服务端返回appstore的地址
 				type: Boolean,
@@ -78,11 +74,16 @@
 				update_tips: '',
 				forceupgrade: false,
 				currentversion: this.oldversion,
-				versionname: ''
+				versionname: '',
+				vesioncode: this.oldcode
 			}
 		},
 		mounted() {
-			if(this.h5preview){
+			let app_flag = false
+			// #ifdef APP-PLUS
+			app_flag = true
+			// #endif
+			if(this.h5preview || app_flag){
 				console.log("检测升级")
 				this.check_update()
 			}
@@ -100,27 +101,38 @@
 				let that = this
 				// #ifdef APP-PLUS
 				plus.runtime.getProperty(plus.runtime.appid, function(widgetInfo) { 
-					console.log(widgetInfo.version,widgetInfo.versionCode,widgetInfo.name)
 					that.currentversion = widgetInfo.version
 					that.versionname = widgetInfo.name
+					that.versioncode = widgetInfo.versionCode
+					that.updatebusiness(that)
 				});  
 				// #endif
+				// #ifdef H5
+				if(this.h5preview){
+					this.updatebusiness(that)
+				}
+				// #endif
+				
+			},
+			updatebusiness: function(that){ //具体升级的业务逻辑
 				uni.showLoading({
 					title: '',
 					mask: false
 				});
 				let platform = uni.getSystemInfoSync().platform
+				let formdata = {
+					method: "upgrade",
+					version: that.currentversion,  
+					name: that.versionname,
+					code: that.versioncode,
+					ts:'123',
+					transid:'123',
+					sign:'123',
+					platform: platform
+				}
 				uni.request({  
 					url: that.updateurl,  
-					data: {
-						method: "upgrade",
-						version: that.currentversion,  
-						name: that.versionname,
-						ts:'123',
-						transid:'123',
-						sign:'123',
-						platform: platform
-					},  
+					data: formdata,
 					success: (result) => {
 						uni.hideLoading()
 						let data = result.data
