@@ -1,6 +1,3 @@
-# zy-upgrade
-uni-app 在线升级
-
 ## 安装插件
 
 ~~直接 hbuilderx 导入
@@ -29,16 +26,45 @@ components:{
 
 | 参数         | 类型    | 必填 | 说明                                                                                                               |
 | ------------ | ------- | ---- | ------------------------------------------------------------------------------------------------------------------ |
-| theme        | String  | 是   | 主题，目前支持主题：gree、red、blue、yellow、pink。如需要其他主题可联系作者定制                                    |
+| theme        | String  | 是   | 主题，默认为green，目前支持主题：gree、red、blue、yellow、pink。如需要其他主题可联系作者定制                                    |
 | updateurl    | String  | 是   | 升级检测的 URL，一般需要用 php 或 java、c#、python、nodejs 等写一个服务端，作为升级检测的 url                      |
-| h5preview    | Boolean | 否   | 开发过程中是否支持 hbuilderx 或浏览器预览，方便开发测试                                                              |
-| oldversion   | Stirng  | 否   | H5 预览模式下可以传一个 oldverison，主要显示在升级界面上，不传则不显示原版本，APP 会自动检测旧版本，不需要传此参数 |
+| h5preview    | Boolean | 否   | 开发过程中是否支持 hbuilderx 或浏览器预览，方便开发测试                                                            |
+| oldversion   | Stirng  | 否   | H5 预览模式下可以传一个 oldverison，主要显示在升级界面上，不传则不显示原版本，APP模式下会自动检测旧版本，不需要传此参数 |
 | oldcode      | Number  | 否   | H5 预览模式下传的 versioncode，有的开发者可能会用 versioncode 做升级判断，更简便一点。传或不传取决于你自己         |
 | appstoreflag | Boolean | 否   | 是否支持 appstroe 升级。如果支持则服务器端返回的不是安装包地址，而是 appstore 地址，app 将会打开 appstore 进行升级 |
+| autocheckupdate | Boolean | 否 | 默认为false，如果为true才会页面mounted时自动检测。比如在关于页面，只有用户点击检测新版本时，才会触发升级操作，这里设置为false即可。进入APP第一个页面，设置为true，则会自动检测新版本 |
+| noticeflag | Boolean | 否 | 默认为false，如果设置为true，当没有新版本时，会通过showupdateTips方法通知父组件，父组件可以提示已是最新版本  |
+
+###### 点击按钮检测更新示例
+```
+<zy-update :updateurl="updateurl" :noticeflag="true" :h5preview="true" oldversion="1.0.3" 
+		ref="zyupgrade" :showupdateTips="showupdatetips"></zy-update>
+```
+页面调用子组件方法要引用（ref），子组件调用父页面方法要发射（emit）<br />
+注意：首先要给插件一个ref="zyupgrade"，这样检测版本按钮时，才能调用插件时原版本检测方法(check_update)：
+```
+checkupdate:function(){
+	this.$refs.zyupgrade.check_update()
+}
+```
+另：noticeflag="true",这样插件才会通知当前页面没有最新版本（有最新版本会自动弹出升级对话框）。
+	需要在当前页面绑定一个事件，用于显示通知：:showupdateTips="showupdatetips"，接下来需要做的就是在当前页面定义showupdatetips方法
+
+```
+showupdatetips:function(flag){
+	if(flag == 0){
+		uni.showToast({
+			title: '已经是最新版本了',
+			icon:'none'
+		});
+	}
+}
+```
+没有版本需要升级时，会传flag=0出来。页面怎么提醒，就随你开心了
 
 ## 服务端版检测说明
 
-为了方便开发，我把所有业务全部封到插件里了，入参如下，服务端可以根据需要选中：
+为了方便开发，我把所有业务全部封到插件里了，入参如下，服务端可以根据口味选择服用：
 
 ```
 {
@@ -66,13 +92,15 @@ components:{
 		"forceupdate": 0,
 		"update_tips": "优化拆包上传后备注丢失问题\n优化其他功能",
 		"version": "1.0.2",
-		"size": 0
+		"size": 0,
+		"wgt_flag": 0,
+		"wgt_url": "http://xxxx/Uploads/app/backorder_1.0.2.wgt"
 	}
 }
 ```
 
 - code=100 代表接口调用成功，其他 code 代表失败。<br />
-- msg 为返回说明，目前客户端没有用到，可以保持为空。<br />
+- msg 为返回说明，跟我其他项目返回体格式保持一致，目前版本升级逻辑客户端没有用到，可以保持为空。<br />
 - data 是真正的返回体：<br />
   - update_flag: 0 不需要升级，1 需要升级<br />
   - forceupdate: 0 不强制，1 强制升级（这个字段以后可能会优化到 update_flag 里）<br />
@@ -80,6 +108,8 @@ components:{
   - update_tips：升级说明，不用我提醒大家换行应该用\n 了吧？ <br />
   - version：当前最新的版本。<br />
   - size：备用吧，有些服务器启用了 gzip 或者直接返回流数据，会造成客户端获取不到安装包大小，进度条将会失效。用这个字段来计算进度。<br />
+  - wgt_flag: 1.0.3后新增参数，1为增量升级，0为非增量升级
+  - wgt_url: 1.0.3后新增参数，如果wgt_flag=1，则这个参数就是增量包的地址，注意是全路径
 
 ###### 服务端代码示例
 
@@ -90,18 +120,20 @@ components:{
 代码写的比较硬
 
 ```
-$version = I("version");
+$version = input("version");
 // 一系列数据库判断逻辑，省略
 $update_flag = $result?1:0;
 $data = array(
 	"update_flag"=> $update_flag,
-	"update_url"=>"http://xxxxx/Uploads/app/backorder_1.0.2.apk",
+	"update_url"=>"http://xxxx/Uploads/app/backorder_1.0.2.apk",
 	"forceupdate"=>0,
+	"wgt_flag"=>1,
+    "wgt_url"=>"http://192.168.10.7:88/Public/Uploads/app/backorder_1.0.4.wgt",
 	"update_tips"=>"优化拆包上传后备注丢失问题\ntest",
 	"version"=>"1.0.2",
 	"size"=>0
 );
-return json(array("code"=>100,“msg"=>"","data"=>$data));
+return json(array("code"=>100,"msg"=>"","data"=>$data));
 ```
 
 - java
@@ -133,6 +165,10 @@ public class ResponseData<T> extends BaseResponse {
         super(codeEnum);
         this.data = data;
     }
+	public static <T> ResponseData<T> out(CodeEnum codeEnum,T data){
+        //如果data类型是List,则会强制转换为LinkedHasMap，客户端不能自动转换为List对象，需要再次转
+        return new ResponseData<T>(codeEnum,data);
+    }
 	// 其他方法略
 }
 ```
@@ -145,10 +181,3 @@ return ResponseData.out(CodeEnum.SUCCESS, updateEntity);
 ```
 
 ---
-
-# 作者
-
-十几年服务端软件开发精验，擅长 java、c#和 php 等服务端软件，写过两年 android，研究各类跨平台开发，weex、react-native 等，发现 uni-app 实在是比其他类跨平台开发方便很多。前几年接过几个私活，那时候还在用 mui。今年疫情期间学了段时间 vue，给公司用 springcloud+vue 写了一个知识库系统。目前作者主要从事物联网相关方面的工作，对于软件开发，纯属于业余好了。非科班出身，大学学的是物理，十几年横练了一身野路子，算是信息管理系统全栈工程师了吧，水平有限，请海涵，如有错误，请反馈给作者及时优化。
-<br />
-有问题交流，也可以稳步：
-<a href="https://zhouyu629.cnblogs.com/">我的博客</a>
