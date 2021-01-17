@@ -38,11 +38,11 @@
 	export default {
 		name: 'ZyUpgrade',
 		props: {
-			theme: {	//主题，目前支持
+			theme: {	//主题，目前支持green,pink,blue,yellow,red
 				type: String,
 				default: 'green'
 			},
-			updateurl: {
+			updateurl: {	//升级检测url，全路径
 				type:String,
 				default: ''
 			},
@@ -61,6 +61,14 @@
 			appstoreflag: {	//是否启用appstore升级，如果启用，由服务端返回appstore的地址
 				type: Boolean,
 				default: false
+			},
+			noticeflag:{	//是否通知主界面无需更新
+				type:Boolean,
+				default: false
+			},
+			autocheckupdate:{	//是否页面截入时就判断升级
+				type:Boolean,
+				default: false
 			}
 		},
 		data() {
@@ -75,7 +83,9 @@
 				forceupgrade: false,
 				currentversion: this.oldversion,
 				versionname: '',
-				vesioncode: this.oldcode
+				vesioncode: this.oldcode,
+				wgt_flag: 0,
+				wgt_url: ''
 			}
 		},
 		mounted() {
@@ -83,7 +93,7 @@
 			// #ifdef APP-PLUS
 			app_flag = true
 			// #endif
-			if(this.h5preview || app_flag){
+			if((this.h5preview || app_flag) && this.autocheckupdate){
 				console.log("检测升级")
 				this.check_update()
 			}
@@ -125,7 +135,7 @@
 					version: that.currentversion,  
 					name: that.versionname,
 					code: that.versioncode,
-					ts:'123',
+					ts:(new Date()).valueOf(),
 					transid:'123',
 					sign:'123',
 					platform: platform
@@ -146,8 +156,13 @@
 								that.version_url = data.data.update_url
 								//that.currentversion = widgetInfo.version
 								that.updated2version = data.data.version
+								that.wgt_flag = data.data.wgt_flag
+								that.wgt_url = data.data.wgt_url
 							}else{
-								
+								if(that.noticeflag){
+									//通知父组件，当前版为最新版本
+									that.$emit("showupdateTips",0)
+								}
 							}
 						}else{
 							uni.showToast({
@@ -189,20 +204,25 @@
 					    });
 					});
 				}else{
-					let that = this				
+					let that = this
+					let downloadurl = that.wgt_flag==1?that.wgt_url:that.version_url
 					this.update_confirm = true
 					this.downloadTask = uni.downloadFile({
-						url: that.version_url,
+						url: downloadurl,
 						success:function(res){
 							if(res.statusCode == 200){
 								//开始安装
 								plus.runtime.install(res.tempFilePath, {
 									force: false  
 								}, function() {  
-									console.log('install success...');  
-									plus.runtime.restart();  
+									console.log('install success...');
+									plus.runtime.restart();
 								}, function(e) {  
-									console.error('install fail...');  
+									console.error('install fail...',e);  
+									uni.showToast({
+										title: '升级失败',
+										icon:'none'
+									});
 								});  
 							}else{
 								uni.showToast({
@@ -232,7 +252,7 @@
 </script>
 
 <style scoped>
-	@import url("static/main.css");
+	@import url("static/css/main.css");
 	.zy-upgrade-topbg-green {
 		background-image: url('static/images/green.png');
 		background-size: 100% 100%;
