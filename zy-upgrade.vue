@@ -85,7 +85,8 @@
 				versionname: '',
 				vesioncode: this.oldcode,
 				wgt_flag: 0,
-				wgt_url: ''
+				wgt_url: '',
+				size: 0 ,//开启gzip等情形下，获取不到安装包大小，可以服务端返回安装包大小
 			}
 		},
 		mounted() {
@@ -158,6 +159,7 @@
 								that.updated2version = data.data.version
 								that.wgt_flag = data.data.wgt_flag
 								that.wgt_url = data.data.wgt_url
+								that.size = data.data.size
 							}else{
 								if(that.noticeflag){
 									//通知父组件，当前版为最新版本
@@ -244,6 +246,15 @@
 					})
 					this.downloadTask.onProgressUpdate(function(res){
 						that.update_process = res.progress
+						if(res.progress == Infinity){
+							//使用size计算
+							console.log("计算size");
+							let progress = (res.totalBytesWritten / that.size)*100
+							if(progress>100){
+								progress = 100
+							}
+							that.update_process = progress
+						}
 					})
 				}
 			},
