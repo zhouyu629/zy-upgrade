@@ -184,9 +184,4 @@ return ResponseData.out(CodeEnum.SUCCESS, updateEntity);
 
 ---
 
-# 关于作者
 
-十几年服务端软件开发经验，擅长 java、c#和 php 等服务端软件，写过两年 android，研究各类跨平台开发，weex、react-native 等，发现 uni-app 实在是比其他类跨平台开发方便很多。前几年接过几个私活，那时候还在用 mui。今年疫情期间学了段时间 vue，给公司用 springcloud+vue 写了一个知识库系统。目前作者主要从事物联网相关方面的工作，对于软件开发，纯属于业余爱好了。非科班出身，大学学的是物理，十几年横练了一身野路子，算是信息管理系统全栈工程师了吧，水平有限，请海涵，如有错误，请反馈给作者及时优化。
-<br />
-有问题交流，也可以移步：
-<a href="https://zhouyu629.cnblogs.com/">我的博客</a>
