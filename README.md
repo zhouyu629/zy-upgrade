@@ -40,7 +40,7 @@ components:{
 ###### 点击按钮检测更新示例
 ```
 <zy-update :updateurl="updateurl" :noticeflag="true" :h5preview="true" oldversion="1.0.3" 
-		ref="zyupgrade" :showupdateTips="showupdatetips"></zy-update>
+		ref="zyupgrade" @showupdateTips="showupdatetips"></zy-update>
 ```
 页面调用子组件方法要引用（ref），子组件调用父页面方法要发射（emit）<br />
 注意：首先要给插件一个ref="zyupgrade"，这样检测版本按钮时，才能调用插件时原版本检测方法(check_update)：
@@ -50,7 +50,7 @@ checkupdate:function(){
 }
 ```
 另：noticeflag="true",这样插件才会通知当前页面没有最新版本（有最新版本会自动弹出升级对话框）。
-	需要在当前页面绑定一个事件，用于显示通知：:showupdateTips="showupdatetips"，接下来需要做的就是在当前页面定义showupdatetips方法
+	需要在当前页面绑定一个事件，用于显示通知：@showupdateTips="showupdatetips"，接下来需要做的就是在当前页面定义showupdatetips方法
 
 ```
 showupdatetips:function(flag){
